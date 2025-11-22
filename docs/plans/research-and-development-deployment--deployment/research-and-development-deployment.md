@@ -1,0 +1,179 @@
+# Research and Development - Deployment
+
+## Table of Contents
+
+- [Research](#research)
+- [Development](#development)
+- [Notes](#notes)
+  - [Localstack](#localstack)
+    - [Pricing](#pricing)
+    - [Emulated Services](#emulated-services)
+  - [Localstack S3](#localstack-s3)
+    - [Manual Create Bucket](#manual-create-bucket)
+    - [Manual List Buckets](#manual-list-buckets)
+    - [Manual Put Object](#manual-put-object)
+    - [Manual List Objects](#manual-list-objects)
+  - [Localstack DynamoDB](#localstack-dynamodb)
+    - [Manual Create Table](#manual-create-table)
+    - [Manual Create Replicas](#manual-create-replicas)
+    - [Manual Put Item](#manual-put-item)
+
+## Research
+
+[Localstack's - awslocal wrapper script](https://github.com/localstack/awscli-local) allows for commands like `awslocal s3api create-bucket --bucket sample-bucket` to be run
+
+- Select which localstack services to use
+
+  - [LocalStack Web Application](https://app.localstack.cloud/?__hstc=108988063.45ff4d408e686ea3ccbf0e3a88eba683.1762955290608.1762955290608.1762955290608.1&__hssc=108988063.5.1762955290608&__hsfp=363862523) apparently links straight to S3 locally? I'm not sure
+    - Their example [Serverless Image Resizer](https://github.com/localstack-samples/sample-serverless-transcribe) seems like an interesting project. It uses Serverless though, so will need a little bit of tweaking to convert to SAM (or perhaps I should leave it be. I have used it in the past)
+  - S3
+
+    - They provide their own docker image, but persistence is a paid feature. Unfortunately, Amazon don't provide their own Docker Image in this case, unlike DynamoDB
+      - They also provide a [Resource Browser](https://docs.localstack.cloud/aws/capabilities/web-app/resource-browser)
+    - `awslocal s3api list-buckets` to be used to lazy create the bucket? Should I make a script for that?
+    - `Put Object` returns an ETag. What would be the purpose of this? Returning a 302?
+    - Using Localstack with the AWS SDK requires setting `ForcePathStyle` set to `true` in S3 client configuration
+      - I'm not sure if this affects how the client needs to be configured when using a real S3
+    - Localstack's S3 Cross Origin Resource Sharing needs to be configured separately. Might need a maintenance script to detect drift. I need to convert this inline code to how it would actually be executed against each real bucket - `awslocal s3api get-bucket-cors --bucket cors-bucket`. Place the results into `cors-config.json`, though I would need to create a naming convention
+
+      - e.g. This is a sample provided in the Localstack documentation. Sounds like the real output will be different. I will probably need to develop some form of drift detection for the [configuration of CORS in Localstack](https://docs.localstack.cloud/aws/capabilities/config/configuration/#s3) and real S3 buckets to see if I'm using anything that would no longer be compatible
+
+        ```sh
+              {
+          "CORSRules": [
+            {
+              "AllowedHeaders": ["*"],
+              "AllowedMethods": ["GET", "POST", "PUT"],
+              "AllowedOrigins": ["http://localhost:3000"],
+              "ExposeHeaders": ["ETag"]
+            }
+          ]
+        }
+        ```
+
+      - Apply it with `awslocal s3api put-bucket-cors --bucket cors-bucket --cors-configuration file://cors-config.json`
+      - Verify it with `awslocal s3api get-bucket-cors --bucket cors-bucket`
+
+  - DDB
+    - A wrapper over [Amazon's DynamoDB Local](https://hub.docker.com/r/amazon/dynamodb-local)
+      - Persistence appears to be available, but that's because of Amazon lol
+    - Handling the guidelines of caching for 24 hours
+      - DDB has a Time to Live feature. That could be a cheaper way of hitting a cache miss
+      - Alternatively, I could hit cache misses by appending the Y-m-d string to the key
+        - I can introduce some form of even distribution to jitter the expiry
+    - Though I have a feeling I might be better off with a "Refetch-After" value. Because I won't need to continually refetch data for cards that are already out
+  - Cloudwatch
+    - Apparently composite alarms aren't evaluated, so that might impact my decision to use them in prod
+      - There appear to be around 40% of API calls that aren't supported
+    - Neither is anomaly detection, but I'm not sure I'd need to use that anyways. I think New Relic / Sentry, etc. could be better there
+    - This is where log streams are from as well
+  - EventBridge Scheduler
+    - All APIs are `community`
+    - This is available, and would prompt the discover of new sets, etc.
+
+- Create a CLAUDE.md file that outlines I'm in the research and development phase, and need to explore my options, and have Claude help me prioritise the low hanging fruit and yield
+  - Fact check my notes
+- As an aside, [AWS SAM Nested Stacks](https://github.com/aws-samples/aws-sam-nested-stack-sample) might be something to look into for monorepos. I'm unsure though
+  - Additionally, [AWS SAM + AWS CDK](https://aws.amazon.com/blogs/compute/better-together-aws-sam-and-aws-cdk/) is something to look into perhaps
+    - [AWS SAM + AWS CDK - TS App](https://github.com/aws-samples/aws-serverless-app-sam-cdk)
+  - If I get the time - [AWS Samples on Github](https://github.com/aws-samples) has a whopping 8,000 repositories of examples
+
+## Development
+
+TBA
+
+## Notes
+
+### Localstack
+
+#### Pricing
+
+- Base - 55+ emulated services - $39 USD/month, billed annually, so ~$720 AUD/year
+- Ultimate - 110+ emulated services - $89 USD/month, billed annually, so ~$1,640 AUD/year
+- Enterprise - Not interested at present
+
+I'd almost say the pricing looks scary but it is reasonable. If you cost an employee's time at $100 and hour, you need only save a dozen or so hours in a year to have made the investment worth it. But I'd need to take a good look at the value proposition. I understand that tighter feedback loops are good in that they reduce context switching, and messing around waiting for something to deploy, not to mention it's sometimes impossible to clean up a stack. So I expect there's some level of savings from not having to monitor CloudTrail as well
+
+#### Emulated Services
+
+Each supported service in Localstack has an `API Coverage` section
+
+- You can filter by the operation you want to call
+- The table will tell you whether it's a paid feature (`pro`), or free (`community`)
+
+It might be worth setting up a linter over pages like [this](https://docs.localstack.cloud/aws/services/dynamodb/#api-coverage), which link straight to the API coverage. If there's an API for this, that would be even better. If the codebase can detect feature usage that's not available in the current tier, that would be great
+
+### Localstack S3
+
+[Localstack - S3](https://docs.localstack.cloud/aws/services/s3/)
+
+#### Manual Create Bucket
+
+```sh
+awslocal s3api list-buckets
+```
+
+#### Manual List Buckets
+
+```sh
+awslocal s3api list-buckets
+```
+
+#### Manual Put Object
+
+```sh
+awslocal s3api put-object \
+  --bucket sample-bucket \
+  --key image.jpg \
+  --body image.jpg
+```
+
+Apparently this call returns an ETag
+
+```sh
+{
+    "ETag": "\"d41d8cd98f00b204e9800998ecf8427e\""
+}
+```
+
+#### Manual List Objects
+
+```sh
+awslocal s3api list-objects \
+  --bucket sample-bucket
+```
+
+### Localstack DynamoDB
+
+There appear to be typos in the [documentation](https://docs.localstack.cloud/aws/services/dynamodb/) from Localstack. Specifically `ap-south-1`... I'm not sure if that would actually work
+
+`DYNAMODB_IN_MEMORY=1` might be beneficial, but makes persistent storage impossible
+
+#### Manual Create Table
+
+```sh
+awslocal dynamodb create-table \
+  --table-name global01 \
+  --key-schema AttributeName=id,KeyType=HASH \
+  --attribute-definitions AttributeName=id,AttributeType=S \
+  --billing-mode PAY_PER_REQUEST \
+  --region ap-south-1
+```
+
+#### Manual Create Replicas
+
+```sh
+awslocal dynamodb update-table \
+  --table-name global01 \
+  --replica-updates '[{"Create": {"RegionName": "eu-central-1"}}, {"Create": {"RegionName": "us-west-1"}}]' \
+  --region ap-south-1
+```
+
+#### Manual Put Item
+
+```sh
+awslocal dynamodb put-item \
+  --table-name global01 \
+  --item '{"id":{"S":"foo"}}' \
+  --region eu-central-1
+```

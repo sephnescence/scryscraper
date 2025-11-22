@@ -1,0 +1,20 @@
+version: "0.2"
+language: en-GB
+words:
+  - anyways
+  - awslocal
+  - cardhoarder
+  - cardmarket
+  - edhrec
+  - highres
+  - localstack
+  - mtgo
+  - nonfoil
+  - oathbreaker
+  - oldschool
+  - paupercommander
+  - predh
+  - Scryfall
+  - Scryscraper
+  - standardbrawl
+  - tcgplayer
