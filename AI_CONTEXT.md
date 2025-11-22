@@ -31,10 +31,8 @@ docs/
         <plan-name>--<final-version>--<Ymd-His>.md
     <plan-name>/
       <plan-name>--<version>--<Ymd-His>.md
-      _blockers/
-        _cleared/
-        <blocker-number>--<description>/
-          <blocker-number>--<description>.md
+      _history/
+        <plan-name>--<previous-version>--<Ymd-His>.md
       <priority>--<type>--<name>/
         _history/
           <name>--<previous-version>--<Ymd-His>.md
@@ -42,10 +40,15 @@ docs/
 ```
 
 - **Plan Folders**: Use a folder for each plan item: `<priority>--<type>--<name>/`.
+  - **Allowed Types**:
+    - `prereq`: A mandatory task that must be completed before proceeding.
+    - `optional`: A task that is not critical for the current goal but adds value.
+    - `blocker`: A question, decision, or issue that prevents progress and requires user input.
 - **Plan Files**: Inside the folder, the file must be named `<name>--<version>--<Ymd-His>.md` (e.g., `pnpm-init--v1--20251122-134500.md`).
 - **History**: Move previous versions of plan files to `_history/` within the plan folder.
 - **Gitkeep**: Always include a `.gitkeep` file in `_completed`, `_history`, and `_cleared` folders to ensure they are tracked by git even when empty.
 - **Main Plan File**: The main plan file must have a timestamp suffix: `<plan-name>--<version>--<Ymd-His>.md`.
+  - **History**: Move previous versions of the main plan file to `_history/` within the plan folder.
   - **Versioning**: Do not edit existing plan files. Create a new file with a new timestamp for every change.
   - **Changelog**: Each new version must include a changelog noting what changed from the previous version.
 - **Completed Plans**: Move finished plan folders to `docs/plans/_completed/`.
@@ -55,9 +58,9 @@ docs/
 - **Planning Mode**: The AI acts strictly in Planning Mode.
   - **No Execution**: Do not offer to execute commands. The user will manually execute steps.
   - **Fleshed Out Plans**: All `<priority>--<type>--<name>` files must be fully detailed before the user works through them.
-- **Blockers**: Use the `_blockers` directory within the specific plan folder for questions or decisions requiring user input.
-  - Create a folder `<blocker-number>--<description>/` and a file `<blocker-number>--<description>.md` detailing the question.
-  - The user will answer and move the folder to `_cleared/`.
+- **Blockers**: Treat blockers as standard plan items with the type `blocker`.
+  - Format: `<priority>--blocker--<description>/`.
+  - When resolved, move to `_completed/` like any other plan item.
 - **Vertical Slices & Atomicity**: Work should be broken down into the smallest possible units. A vertical slice does not need to be a full feature deliverable.
 - **Granularity**: Prioritise small, atomic changes to facilitate easy review and preserve history. Avoid bundling unrelated changes.
 - **Step-by-Step**: Do not rush. Create a plan, get approval, then wait for the user to execute.

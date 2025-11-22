@@ -14,8 +14,10 @@ e.g. you might want to borrow this and formalise it more
       - <feature>--<alignments>
         - <timestamp>--<description>.md
   - plans
-    - research-and-development--<task-name>
-      - <task-name>.md
+    -# Appropriate System Prompt
+
+## Changelog
+- **2025-11-22**: Renamed from `research-and-development-appropriate-system-prompt`. Removed prefix.
       - pre-requisites
         - <priority-number>--<pre-requisite-task-name>
           - <pre-requisite-task-name>--<timestamp>.md

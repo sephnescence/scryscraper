@@ -1,7 +1,7 @@
-# Research and Development - MVP Slice - Pull TLA
+# MVP Slice - Pull TLA
 
 ## Changelog
-- **2025-11-22**: Initial versioning. Renamed from `research-and-development-mvp-slice-pull-tla.md`. Updated code blocks to use UK English.
+- **2025-11-22**: Renamed from `research-and-development-mvp-slice-pull-tla`. Removed prefix.
 
 ## Table of Contents
 
@@ -244,7 +244,7 @@ Plans will always be in the `docs/plans` directory, and follow this structure
       - <feature>--<alignments>
         - <timestamp>--<description>.md
   - plans
-    - research-and-development--<task-name>
+    - <plan-name>
       - <task-name>.md
       - pre-requisites
         - <priority-number>--<pre-requisite-task-name>
